@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowerEarn - Ultra Premium</title>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <!-- Icons & Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family=Great+Vibes&display=swap" rel="stylesheet">
+
+    <style>
+        :root { 
+            --primary: #FFD700; 
+            --bg: #050505; 
+            --surface: #121212; 
+            --text: #ffffff; 
+            --accent: #ff007f;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: #000; display: flex; justify-content: center; overflow: hidden; color: var(--text); }
+
+        .app-shell { width: 100%; max-width: 450px; height: 100vh; background: var(--bg); position: relative; display: flex; flex-direction: column; }
+
+        /* Full Screen Overlays for Update & Maintenance */
+        .full-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 5000; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .popup-box { width: 85%; background: #1a1a1a; border: 1px solid var(--primary); border-radius: 25px; padding: 25px; text-align: center; }
+
+        .screen { flex: 1; display: none; overflow-y: auto; padding: 20px; padding-bottom: 120px; animation: fadeIn 0.4s ease; }
+        .active-screen { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .top-bar { height: 75px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #111; position: sticky; top: 0; z-index: 2000; }
+        .logo { font-family: 'Great Vibes', cursive; font-size: 24px; color: var(--primary); }
+
+        .header-profile { display: flex; align-items: center; gap: 10px; }
+        .header-profile img { width: 35px; height: 35px; border-radius: 50%; border: 1px solid var(--primary); object-fit: cover; }
+        .header-profile .user-info { display: flex; flex-direction: column; }
+        .header-profile .user-name { font-size: 12px; font-weight: 600; color: #fff; max-width: 80px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+        .nav { position: absolute; bottom: 20px; left: 10px; right: 10px; height: 70px; background: rgba(20, 20, 20, 0.95); display: flex; justify-content: space-around; align-items: center; border-radius: 20px; border: 1px solid #333; z-index: 1000; backdrop-filter: blur(10px); }
+        .nav-item { text-align: center; color: #666; font-size: 10px; cursor: pointer; transition: 0.3s; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item i { font-size: 20px; display: block; margin-bottom: 4px; }
+
+        .balance-card { background: linear-gradient(135deg, #1e1e1e, #111); padding: 12px 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; border: 1px solid #222; }
+        .balance-card p { font-size: 11px; color: #888; margin-bottom: 2px; }
+        .balance-card h2 { font-size: 24px; color: var(--primary); }
+        
+        .task-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .task-card { border-radius: 15px; padding: 20px; text-align: center; cursor: pointer; color: #fff; font-weight: 600; }
+        
+        .task-0 { background: linear-gradient(135deg, #FF3CAC, #784BA0); }
+        .task-1 { background: linear-gradient(135deg, #2AF598, #08AEEA); }
+        .task-2 { background: linear-gradient(135deg, #FEE140, #FA709A); }
+        .task-3 { background: linear-gradient(135deg, #4158D0, #C850C0); }
+        .task-4 { background: linear-gradient(135deg, #00DBDE, #FC00FF); }
+        .task-5 { background: linear-gradient(135deg, #6A11CB, #2575FC); }
+
+        .btn-luxury { width: 100%; padding: 15px; background: var(--primary); border: none; border-radius: 12px; color: #000; font-weight: 700; cursor: pointer; margin-top: 10px; font-size: 14px; }
+        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+
+        input, textarea, select { width: 100%; padding: 15px; margin-bottom: 12px; border-radius: 12px; border: 1px solid #222; background: #111; color: #fff; outline: none; }
+        
+        .active-lock { background: rgba(255, 215, 0, 0.1); border: 1px dashed var(--primary); padding: 20px; border-radius: 15px; text-align: center; margin: 15px 0; }
+        
+        .profile-pic-container { position: relative; width: 100px; height: 100px; margin: 0 auto 15px; }
+        .profile-pic-container img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); }
+        .upload-btn { position: absolute; bottom: 0; right: 0; background: var(--primary); color: #000; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; border: 2px solid #000; }
+
+        .payment-box { background: #111; padding: 15px; border-radius: 15px; border: 1px solid #222; margin-bottom: 12px; }
+        .status-badge { padding: 4px 10px; border-radius: 50px; font-size: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="app-shell">
+    
+    <!-- APP OFF / MAINTENANCE SCREEN -->
+    <div id="maintenance-screen" class="full-overlay">
+        <i class="fas fa-tools" style="font-size: 50px; color: var(--primary); margin-bottom: 20px;"></i>
+        <h2 style="color: var(--primary);">App Maintenance</h2>
+        <p id="maintenance-msg" style="margin-top: 15px; color: #ccc;">অ্যাপটি বর্তমানে বন্ধ আছে। পরে চেষ্টা করুন।</p>
+    </div>
+
+    <!-- UPDATE FORCE SCREEN -->
+    <div id="update-screen" class="full-overlay">
+        <i class="fas fa-cloud-download-alt" style="font-size: 50px; color: var(--primary); margin-bottom: 20px;"></i>
+        <h2 style="color: var(--primary);">Update Required!</h2>
+        <p style="margin: 15px 0; color: #ccc;">আপনি অ্যাপটির একটি পুরনো ভার্সন ব্যবহার করছেন। কাজ চালিয়ে যেতে নতুন ভার্সনটি ডাউনলোড করুন।</p>
+        <button class="btn-luxury" id="download-btn" onclick="">Update Now</button>
+    </div>
+
+    <!-- NOTICE POPUP -->
+    <div id="popup-notice" class="modal-overlay">
+        <div class="popup-box">
+            <h3 id="pop-title">নোটিশ</h3>
+            <p id="pop-desc" style="margin:15px 0; font-size:14px; color: #ccc;"></p>
+            <button class="btn-luxury" onclick="closePopup()">বন্ধ করুন</button>
+        </div>
+    </div>
+
+    <!-- AUTH SCREEN -->
+    <div id="auth-screen" class="screen active-screen">
+        <div style="text-align: center; padding-top: 50px;">
+            <h1 class="logo" style="font-size: 45px;">FlowerEarn</h1>
+            <p style="color: #666; margin-bottom: 30px;">Earn Money Daily</p>
+            <div id="login-box">
+                <input type="number" id="log-phone" placeholder="মোবাইল নম্বর">
+                <input type="password" id="log-pass" placeholder="পাসওয়ার্ড">
+                <button class="btn-luxury" onclick="login()">লগইন</button>
+                <p onclick="toggleAuth(true)" style="margin-top:20px; font-size:14px; color:#888;">নতুন একাউন্ট? <span style="color:var(--primary)">রেজিস্ট্রেশন করুন</span></p>
+            </div>
+            <div id="reg-box" style="display:none;">
+                <input type="text" id="reg-name" placeholder="আপনার নাম">
+                <input type="number" id="reg-phone" placeholder="মোবাইল নম্বর">
+                <input type="password" id="reg-pass" placeholder="পাসওয়ার্ড">
+                <input type="text" id="reg-ref" placeholder="রেফার কোড (যদি থাকে)">
+                <button class="btn-luxury" onclick="register()">রেজিস্ট্রেশন</button>
+                <p onclick="toggleAuth(false)" style="margin-top:20px; font-size:14px; color:#888;">ইতিমধ্যেই একাউন্ট আছে? <span style="color:var(--primary)">লগইন</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTENT -->
+    <div id="main-app" style="display:none; flex-direction:column; height:100%;">
+        <div class="top-bar">
+            <div class="header-profile">
+                <img id="top-u-img" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Profile">
+                <div class="user-info">
+                    <span id="top-u-name" class="user-name">Loading...</span>
+                    <div id="u-status-tag" class="status-badge" style="padding: 2px 6px; font-size: 8px;">...</div>
+                </div>
+            </div>
+            <div class="logo">FlowerEarn</div>
+        </div>
+
+        <!-- HOME -->
+        <div id="home-screen" class="screen active-screen">
+            <div class="balance-card">
+                <p>মোট ব্যালেন্স</p>
+                <h2>৳ <span id="u-bal">0.00</span></h2>
+            </div>
+            
+            <div id="activation-msg" class="active-lock" style="display:none;">
+                <i class="fas fa-lock" style="color:var(--primary); font-size:24px;"></i>
+                <p style="font-size:13px; margin:10px 0;">কাজ শুরু করতে একাউন্ট একটিভ করুন!</p>
+                <button class="btn-luxury" style="width:auto; padding:8px 20px;" onclick="goTo('dep-screen')">একটিভ করুন (৳২০)</button>
+            </div>
+
+            <h4 style="margin-bottom:15px; font-weight:400;">টাস্ক লিস্ট</h4>
+            <div id="task-grid" class="task-grid"></div>
+        </div>
+
+        <!-- TASK WORK SCREEN -->
+        <div id="task-work-screen" class="screen">
+            <h3 id="work-title">Task</h3>
+            <div style="background:#111; padding:20px; border-radius:15px; margin:15px 0;">
+                <p id="work-desc" style="color:#aaa;"></p>
+                <p style="color:var(--primary); margin-top:10px;">পুরস্কার: ৳<span id="work-reward"></span></p>
+            </div>
+            <textarea id="work-proof" placeholder="কাজের প্রমাণ দিন (ইউজারনেম/লিংক)..."></textarea>
+            <button class="btn-luxury" onclick="submitTaskProof()">সাবমিট কাজ</button>
+        </div>
+
+        <!-- DEPOSIT -->
+        <div id="dep-screen" class="screen">
+            <h3>ডিপোজিট / একটিভ</h3>
+            <div class="payment-box">
+                <p style="font-size:13px; color:#888;">বিকাশ/নগদ (সেন্ড মানি):</p>
+                <p>বিকাশ: <b id="adm-bkash">...</b></p>
+                <p>নগদ: <b id="adm-nagad">...</b></p>
+            </div>
+            <input type="number" id="d-amt" placeholder="টাকার পরিমাণ">
+            <input type="text" id="d-trx" placeholder="ট্রানজেকশন আইডি (TrxID)">
+            <button class="btn-luxury" onclick="submitDep()">সাবমিট করুন</button>
+        </div>
+
+        <!-- WITHDRAW -->
+        <div id="wit-screen" class="screen">
+            <h3>উইথড্র করুন</h3>
+            <div class="payment-box">মিনিমাম উইথড্র ৫০ টাকা</div>
+            <select id="w-method">
+                <option value="Bkash">বিকাশ</option>
+                <option value="Nagad">নগদ</option>
+            </select>
+            <input type="number" id="w-num" placeholder="পার্সোনাল নাম্বার">
+            <input type="number" id="w-amt" placeholder="টাকার পরিমাণ">
+            <button class="btn-luxury" onclick="submitWit()">উইথড্র রিকোয়েস্ট</button>
+            <button class="btn-luxury btn-outline" style="margin-top:15px;" onclick="loadWithdrawHistory()">উইথড্র হিস্টোরি দেখুন</button>
+        </div>
+
+        <!-- WITHDRAW HISTORY SCREEN -->
+        <div id="history-screen" class="screen">
+            <div style="display:flex; align-items:center; margin-bottom:20px;">
+                <i class="fas fa-arrow-left" onclick="goTo('wit-screen')" style="font-size:20px; margin-right:15px;"></i>
+                <h3>উইথড্র হিস্টোরি</h3>
+            </div>
+            <div id="withdraw-history-list"></div>
+        </div>
+
+        <!-- TASK HISTORY SCREEN -->
+        <div id="task-history-screen" class="screen">
+            <div style="display:flex; align-items:center; margin-bottom:20px;">
+                <i class="fas fa-arrow-left" onclick="goTo('prof-screen')" style="font-size:20px; margin-right:15px;"></i>
+                <h3>কাজের হিস্টোরি</h3>
+            </div>
+            <div id="task-history-list"></div>
+        </div>
+
+        <!-- PROFILE -->
+        <div id="prof-screen" class="screen">
+            <div style="text-align:center; padding:10px;">
+                <div class="profile-pic-container">
+                    <img id="u-main-img" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+                    <label for="pfp-upload" class="upload-btn"><i class="fas fa-camera"></i></label>
+                    <input type="file" id="pfp-upload" style="display:none;" accept="image/*" onchange="uploadProfilePic(this)">
+                </div>
+
+                <h3 id="u-name">...</h3>
+                <p id="u-phone" style="color:#666;"></p>
+                
+                <div style="background:#111; padding:15px; border-radius:15px; margin-top:15px; border:1px solid #222;">
+                    <p style="font-size:12px; color:#888;">আপনার রেফারেল লিঙ্ক:</p>
+                    <p id="ref-link-text" style="font-size:11px; color:var(--primary); margin:5px 0; word-break: break-all;">...</p>
+                    <button class="btn-luxury" style="padding: 8px; font-size: 12px; width: auto;" onclick="copyReferralLink()">লিঙ্ক কপি করুন</button>
+                </div>
+
+                <button class="btn-luxury btn-outline" style="margin-top:15px;" onclick="loadTaskHistory()">আমার কাজের হিস্টোরি</button>
+
+                <div style="background:#111; padding:15px; border-radius:15px; margin-top:15px; border:1px solid #222; text-align: left;">
+                    <p style="font-size:12px; margin-bottom: 8px; color: #888;">প্রোফাইল আপডেট করুন:</p>
+                    <input type="text" id="upd-name" placeholder="নতুন নাম">
+                    <input type="password" id="upd-pass" placeholder="নতুন পাসওয়ার্ড">
+                    <button class="btn-luxury" style="padding: 10px; font-size: 12px;" onclick="updateUserInfo()">তথ্য আপডেট করুন</button>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:20px;">
+                    <button class="btn-luxury btn-outline" onclick="openSupport('telegram')">টেলিগ্রাম</button>
+                    <button class="btn-luxury btn-outline" onclick="openSupport('whatsapp')">হোয়াটসঅ্যাপ</button>
+                </div>
+                <button class="btn-luxury" style="margin-top:20px; background:#ff4444; color:#fff;" onclick="location.reload()">লগ আউট</button>
+            </div>
+        </div>
+
+        <nav class="nav">
+            <div class="nav-item active" onclick="goTo('home-screen', this)"><i class="fas fa-home"></i>হোম</div>
+            <div class="nav-item" onclick="goTo('dep-screen', this)"><i class="fas fa-arrow-up"></i>ডিপোজিট</div>
+            <div class="nav-item" onclick="goTo('wit-screen', this)"><i class="fas fa-wallet"></i>উইথড্র</div>
+            <div class="nav-item" onclick="goTo('prof-screen', this)"><i class="fas fa-user"></i>প্রোফাইল</div>
+        </nav>
+    </div>
+</div>
+
+<script>
+    // গুরুত্বপূর্ণ: এই ভার্সন নম্বরটি যখন আপনি Firebase-এ পরিবর্তন করবেন, সবার অ্যাপ আপডেট চাইবে।
+    const APP_VERSION = "1.0.0"; 
+
+    // Firebase Config
+    const firebaseConfig = {
+        apiKey: "AIzaSyD7AB-B9CirVcVU7wCNFy1-ffv20rB_N9o",
+        databaseURL: "https://fir-82406-default-rtdb.firebaseio.com",
+        projectId: "fir-82406",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentUser = null;
+    let userData = null;
+    let currentTaskId = null;
+    let currentTaskName = "";
+
+    // App Control System (Maintenance & Version Check)
+    db.ref('app_control').on('value', snap => {
+        const config = snap.val();
+        if(!config) return;
+
+        // Maintenance Check
+        if(config.status === 'offline') {
+            document.getElementById('maintenance-screen').style.display = 'flex';
+            document.getElementById('maintenance-msg').innerText = config.maintenance_msg || "অ্যাপটি এখন বন্ধ আছে।";
+        } else {
+            document.getElementById('maintenance-screen').style.display = 'none';
+        }
+
+        // Version Check
+        if(config.version !== APP_VERSION) {
+            document.getElementById('update-screen').style.display = 'flex';
+            document.getElementById('download-btn').onclick = function() {
+                window.open(config.download_url, '_blank');
+            };
+            // Force Logout
+            currentUser = null;
+            document.getElementById('main-app').style.display = 'none';
+            document.getElementById('auth-screen').style.display = 'none';
+        }
+    });
+
+    // Referral Link Detection
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const refBy = urlParams.get('ref');
+        if (refBy) {
+            toggleAuth(true);
+            document.getElementById('reg-ref').value = refBy;
+        }
+    };
+
+    db.ref('admin_settings').on('value', snap => {
+        const d = snap.val() || {};
+        document.getElementById('adm-bkash').innerText = d.bkash || "01XXXXXXXXX";
+        document.getElementById('adm-nagad').innerText = d.nagad || "01XXXXXXXXX";
+    });
+
+    function toggleAuth(isReg) {
+        document.getElementById('login-box').style.display = isReg ? 'none' : 'block';
+        document.getElementById('reg-box').style.display = isReg ? 'block' : 'none';
+    }
+
+    function login() {
+        const ph = document.getElementById('log-phone').value;
+        const ps = document.getElementById('log-pass').value;
+        if(!ph || !ps) return alert("সব ঘর পূরণ করুন");
+        db.ref('users/' + ph).once('value', snap => {
+            if(snap.exists() && snap.val().password === ps) {
+                currentUser = ph;
+                startApp();
+            } else { alert("ভুল পাসওয়ার্ড বা নাম্বার!"); }
+        });
+    }
+
+    function register() {
+        const ph = document.getElementById('reg-phone').value;
+        const nm = document.getElementById('reg-name').value;
+        const ps = document.getElementById('reg-pass').value;
+        const ref = document.getElementById('reg-ref').value;
+        if(!ph || !nm || !ps) return alert("সব তথ্য দিন");
+        
+        db.ref('users/' + ph).once('value', snap => {
+            if(snap.exists()) alert("ইতিমধ্যেই অ্যাকাউন্ট আছে!");
+            else {
+                db.ref('users/' + ph).set({
+                    name: nm, phone: ph, password: ps, balance: 0, status: 'inactive', referredBy: ref || "none", profilePic: ""
+                }).then(() => {
+                    if(ref && ref !== "none" && ref !== ph) {
+                        db.ref('users/' + ref + '/balance').transaction(currentBal => {
+                            return (currentBal || 0) + 5;
+                        });
+                    }
+                    alert("রেজিস্ট্রেশন সফল!"); 
+                    toggleAuth(false); 
+                });
+            }
+        });
+    }
+
+    function startApp() {
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('main-app').style.display = 'flex';
+        
+        db.ref('users/' + currentUser).on('value', snap => {
+            userData = snap.val();
+            if(!userData) return;
+
+            document.getElementById('u-bal').innerText = userData.balance.toFixed(2);
+            document.getElementById('u-name').innerText = userData.name;
+            document.getElementById('top-u-name').innerText = userData.name;
+            document.getElementById('u-phone').innerText = userData.phone;
+            
+            const myRefLink = window.location.origin + window.location.pathname + "?ref=" + userData.phone;
+            document.getElementById('ref-link-text').innerText = myRefLink;
+
+            const pfp = userData.profilePic || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
+            document.getElementById('u-main-img').src = pfp;
+            document.getElementById('top-u-img').src = pfp;
+
+            const tag = document.getElementById('u-status-tag');
+            if(userData.status === 'active') {
+                tag.innerText = "ACTIVE"; tag.style.background = "#28a745";
+                document.getElementById('activation-msg').style.display = 'none';
+            } else {
+                tag.innerText = "INACTIVE"; tag.style.background = "#ff4444";
+                document.getElementById('activation-msg').style.display = 'block';
+            }
+        });
+        loadTasks();
+    }
+
+    function copyReferralLink() {
+        const link = document.getElementById('ref-link-text').innerText;
+        navigator.clipboard.writeText(link).then(() => alert("রেফার লিঙ্ক কপি হয়েছে!"));
+    }
+
+    function updateUserInfo() {
+        const newName = document.getElementById('upd-name').value;
+        const newPass = document.getElementById('upd-pass').value;
+        if(!newName && !newPass) return alert("তথ্য লিখুন!");
+        let updates = {};
+        if(newName) updates['name'] = newName;
+        if(newPass) updates['password'] = newPass;
+        db.ref('users/' + currentUser).update(updates).then(() => {
+            alert("সফলভাবে আপডেট হয়েছে!");
+            document.getElementById('upd-name').value = "";
+            document.getElementById('upd-pass').value = "";
+        });
+    }
+
+    function uploadProfilePic(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                db.ref('users/' + currentUser + '/profilePic').set(e.target.result)
+                .then(() => alert("প্রোফাইল ছবি আপডেট হয়েছে!"));
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function loadTasks() {
+        db.ref('tasks').on('value', snap => {
+            const grid = document.getElementById('task-grid');
+            grid.innerHTML = "";
+            let i = 0;
+            snap.forEach(c => {
+                const t = c.val();
+                grid.innerHTML += `
+                <div class="task-card task-${i%6}" onclick="openTask('${c.key}', '${t.name}', '${t.reward}', '${t.desc}')">
+                    <p>${t.name}</p>
+                    <small>৳${t.reward}</small>
+                </div>`;
+                i++;
+            });
+        });
+    }
+
+    function openTask(id, name, reward, desc) {
+        if(userData.status !== 'active') return alert("আগে একাউন্ট একটিভ করুন!");
+        currentTaskId = id;
+        currentTaskName = name;
+        document.getElementById('work-title').innerText = name;
+        document.getElementById('work-reward').innerText = reward;
+        document.getElementById('work-desc').innerText = desc || "কাজটি সম্পন্ন করে প্রমাণ দিন।";
+        goTo('task-work-screen');
+    }
+
+    function submitTaskProof() {
+        const proof = document.getElementById('work-proof').value;
+        if(!proof) return alert("প্রমাণ দিন!");
+        db.ref('task_proofs').push({
+            user: currentUser, 
+            task_id: currentTaskId, 
+            task_name: currentTaskName, 
+            proof: proof, 
+            status: 'pending', 
+            date: new Date().toLocaleString()
+        }).then(() => {
+            alert("সাবমিট হয়েছে!");
+            document.getElementById('work-proof').value = "";
+            goTo('home-screen');
+        });
+    }
+
+    function loadTaskHistory() {
+        goTo('task-history-screen');
+        const listDiv = document.getElementById('task-history-list');
+        listDiv.innerHTML = "<p style='text-align:center;'>লোড হচ্ছে...</p>";
+        db.ref('task_proofs').orderByChild('user').equalTo(currentUser).on('value', snap => {
+            listDiv.innerHTML = "";
+            if(!snap.exists()) {
+                listDiv.innerHTML = "<p style='text-align:center; color:#666;'>কোনো কাজ জমা দেওয়া হয়নি।</p>";
+                return;
+            }
+            let html = "";
+            snap.forEach(child => {
+                const item = child.val();
+                let color = "#ffaa00"; let statusText = "পেন্ডিং";
+                if(item.status === 'success' || item.status === 'Approved') { color = "#28a745"; statusText = "সফল"; }
+                if(item.status === 'rejected' || item.status === 'Rejected') { color = "#ff4444"; statusText = "বাতিল"; }
+
+                html = `
+                <div class="payment-box" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <p style="font-weight:bold; color:var(--primary);">${item.task_name || 'Task'}</p>
+                        <p style="font-size:11px; color:#888;">${item.date}</p>
+                        <p style="font-size:10px; color:#666; max-width:200px; overflow:hidden;">প্রমাণ: ${item.proof}</p>
+                    </div>
+                    <div class="status-badge" style="background:${color}; color:#fff;">${statusText}</div>
+                </div>` + html;
+            });
+            listDiv.innerHTML = html;
+        });
+    }
+
+    function submitDep() {
+        const amt = document.getElementById('d-amt').value;
+        const trx = document.getElementById('d-trx').value;
+        if(!amt || !trx) return alert("সব তথ্য দিন");
+        db.ref('deposits').push({
+            user: currentUser, amount: amt, trx: trx, status: 'pending', date: new Date().toLocaleDateString()
+        }).then(() => {
+            alert("অনুরোধ পাঠানো হয়েছে!");
+            document.getElementById('d-amt').value = "";
+            document.getElementById('d-trx').value = "";
+        });
+    }
+
+    function submitWit() {
+        const amt = parseFloat(document.getElementById('w-amt').value);
+        const num = document.getElementById('w-num').value;
+        const method = document.getElementById('w-method').value;
+        if(amt < 50) return alert("মিনিমাম উইথড্র ৫০ টাকা");
+        if(userData.balance < amt) return alert("ব্যালেন্স নেই");
+        
+        db.ref('withdraws').push({
+            user: currentUser, amount: amt, phone: num, method: method, status: 'pending', date: new Date().toLocaleString()
+        }).then(() => {
+            db.ref('users/' + currentUser + '/balance').set(userData.balance - amt);
+            alert("উইথড্র রিকোয়েস্ট সফল!");
+            document.getElementById('w-amt').value = "";
+            document.getElementById('w-num').value = "";
+        });
+    }
+
+    function loadWithdrawHistory() {
+        goTo('history-screen');
+        const listDiv = document.getElementById('withdraw-history-list');
+        listDiv.innerHTML = "<p style='text-align:center;'>লোড হচ্ছে...</p>";
+        db.ref('withdraws').orderByChild('user').equalTo(currentUser).on('value', snap => {
+            listDiv.innerHTML = "";
+            if(!snap.exists()) {
+                listDiv.innerHTML = "<p style='text-align:center; color:#666;'>কোনো তথ্য পাওয়া যায়নি।</p>";
+                return;
+            }
+            let html = "";
+            snap.forEach(child => {
+                const item = child.val();
+                let color = "#ffaa00"; let statusText = "পেন্ডিং";
+                if(item.status === 'success' || item.status === 'Approved') { color = "#28a745"; statusText = "সফল"; }
+                if(item.status === 'rejected') { color = "#ff4444"; statusText = "বাতিল"; }
+
+                html = `
+                <div class="payment-box" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <p style="font-weight:bold; color:var(--primary);">৳${item.amount}</p>
+                        <p style="font-size:11px; color:#888;">${item.date}</p>
+                        <p style="font-size:11px; color:#666;">${item.method}: ${item.phone}</p>
+                    </div>
+                    <div class="status-badge" style="background:${color}; color:#fff;">${statusText}</div>
+                </div>` + html;
+            });
+            listDiv.innerHTML = html;
+        });
+    }
+
+    function goTo(id, el) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+        document.getElementById(id).classList.add('active-screen');
+        if(el) {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+        }
+    }
+
+    function openSupport(type) {
+        db.ref('admin_settings/' + type).once('value', snap => {
+            if(snap.exists()) window.open(snap.val(), '_blank');
+            else alert("লিংক যুক্ত করা হয়নি!");
+        });
+    }
+
+    function closePopup() { document.getElementById('popup-notice').style.display = 'none'; }
+    
+    db.ref('admin_notice').once('value', snap => {
+        if(snap.exists()){
+            document.getElementById('pop-title').innerText = snap.val().title;
+            document.getElementById('pop-desc').innerText = snap.val().msg;
+            document.getElementById('popup-notice').style.display = 'flex';
+        }
+    });
+</script>
+</body>
+</html>
